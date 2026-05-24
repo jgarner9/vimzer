@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "HintMode",
+  "version": "1.0.0",
+  "description": "Helix-style keyboard navigation with two-letter hint codes for any focusable element.",
+  "permissions": ["activeTab", "storage"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["hints.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "HintMode"
+  },
+  "commands": {
+    "activate-hints": {
+      "suggested_key": {
+        "mac": "Alt+F",
+        "default": "Alt+F"
+      },
+      "description": "Activate hint mode"
+    },
+    "activate-hints-new-tab": {
+      "suggested_key": {
+        "mac": "Alt+Shift+F",
+        "default": "Alt+Shift+F"
+      },
+      "description": "Activate hint mode (open links in new tab)"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

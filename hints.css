@@ -1,0 +1,107 @@
+/* HintMode - hint badge styles */
+
+.hintmode-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  pointer-events: none;
+}
+
+.hintmode-badge {
+  position: fixed;
+  z-index: 2147483647;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  transform: translate(-2px, -2px);
+
+  /* Helix-inspired amber/gold on dark */
+  background: #1a1a1a;
+  color: #daa520;
+  border: 1px solid #daa520;
+  box-shadow:
+    0 0 0 1px rgba(218, 165, 32, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.6),
+    0 0 12px rgba(218, 165, 32, 0.08);
+
+  transition: opacity 0.08s ease, filter 0.08s ease;
+}
+
+/* First letter typed: highlight matched first char */
+.hintmode-badge .hint-char-matched {
+  color: #fff;
+}
+
+.hintmode-badge .hint-char-pending {
+  color: #daa520;
+}
+
+/* Dimmed badges (first letter typed, doesn't match) */
+.hintmode-badge.hintmode-dim {
+  opacity: 0.18;
+  filter: grayscale(0.6);
+}
+
+/* Active/matched badge pulses */
+.hintmode-badge.hintmode-active {
+  background: #daa520;
+  color: #111;
+  border-color: #f5c842;
+  box-shadow:
+    0 0 0 2px rgba(218, 165, 32, 0.4),
+    0 2px 12px rgba(218, 165, 32, 0.5);
+}
+
+/* Status bar at top of page */
+.hintmode-statusbar {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  padding: 4px 14px 5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  color: #888;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+.hintmode-statusbar .status-mode {
+  color: #daa520;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.hintmode-statusbar .status-typed {
+  color: #fff;
+  font-weight: 600;
+  min-width: 14px;
+}
+
+.hintmode-statusbar .status-count {
+  color: #555;
+}
+
+.hintmode-statusbar .status-newtab {
+  color: #4a9eff;
+  font-size: 10px;
+}
