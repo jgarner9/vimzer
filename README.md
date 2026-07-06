@@ -1,6 +1,6 @@
 # Vimzer ⌨️
 
-Personal vim-style keyboard navigation for Chrome. Jump to any focusable element with two-letter hint codes, lock "scroll focus" onto any scrollable pane, and drive the page with vim scroll keys — as little mouse as possible.
+Personal vim-style keyboard navigation for Chrome, built around a **leader key**. Press `⌥Space`, then a single letter picks the verb: hint-jump to any element, yank a link, lock scroll focus onto a pane, step through feed items, or switch tabs — as little mouse as possible.
 
 Inspired by Helix's `<leader>gw` word jump, Vimium's `f` hint mode, and vim's `Ctrl+D`/`Ctrl+U`.
 
@@ -15,35 +15,40 @@ Inspired by Helix's `<leader>gw` word jump, Vimium's `f` hint mode, and vim's `C
 
 ---
 
-## Hint mode
+## The leader key — `⌥Space`
+
+Press `⌥Space` (bound as a browser-level command, also handled in-page) and a menu bar shows the verbs:
+
+| Key | Verb | What it does |
+|---|---|---|
+| `f` | **Follow** | Two-letter hint badges on every focusable element; type a code to click/focus it |
+| `F` | **Follow (new tab)** | Same, but links open in a new tab |
+| `y` | **Yank** | Hint badges; selecting a link copies its URL, anything else copies its text |
+| `;` | **Focus** | Hint badges; selecting only moves keyboard focus — no click (great for menus/dropdowns) |
+| `s` | **Scroll focus** | Badges on every scrollable area; selecting locks scroll keys onto it |
+| `r` | **Region** | Step through items (articles, list rows) in the focused pane with `j`/`k`, `Enter` opens |
+| `t` | **Tabs** | Overlay listing your tabs with hint codes; type a code to switch |
+| `m` | **Set mark** | Next letter `a–z` saves the current scroll position |
+| `'` | **Jump mark** | Next letter jumps back to a saved position |
+| `Esc` | Cancel | Exits any mode |
+
+In hint modes: type the first letter → non-matching badges dim; second letter → done. `Backspace` un-types, mistypes auto-reset.
+
+## Always-on keys
+
+These work whenever the page has focus and you're **not** typing in a text field:
 
 | Action | Keybind |
 |---|---|
-| Activate hints | macOS: `⌥F` · Windows/Linux: `Alt + J` (`Alt + F` also works on any platform while the page has focus) |
-| Activate hints (open in new tab) | `Alt + Shift + F` |
-| Cancel | `Esc` |
-| Undo last typed char | `Backspace` |
-
-1. Press `⌥F` → amber two-letter badges appear on every focusable element
-2. Type the first letter → non-matching hints dim out
-3. Type the second letter → element is clicked/focused
-
-**Smart activation:** links are clicked (or opened in a new tab with `Alt+Shift+F`), buttons are clicked, inputs/textareas/selects are focused ready to type, everything else gets `.focus()`.
-
-## Scroll mode
-
-| Action | Keybind |
-|---|---|
-| Pick scroll focus | `Alt + S` |
 | Half page down / up | `Ctrl + D` / `Ctrl + U` |
-| Jump to top | `gg` |
-| Jump to bottom | `G` |
+| Jump to top / bottom | `gg` / `G` |
+| Hints (shortcut for leader → f) | macOS `⌥F` · Win/Linux `Alt+J` · in-page `Alt+F` |
+| Hints in new tab | `Alt + Shift + F` |
+| Scroll focus picker | `Alt + S` |
 
-Pages often have several scrollable areas — the page itself, a sidebar, a chat pane, a code block. `Alt+S` badges each one (the page itself is always `aa`); type a code to lock **scroll focus** onto that container. It flashes an amber outline to confirm, and from then on `Ctrl+D` / `Ctrl+U` / `gg` / `G` scroll *it* instead of the page.
+Scroll keys act on the locked scroll focus (the pane you picked with leader → `s`), falling back to the page when none is locked or the pane disappears. The text-field guard preserves native bindings like `Ctrl+U` (delete to line start in macOS inputs).
 
-- Scroll focus resets to the page when you navigate, or automatically if the container disappears from the DOM (SPA re-renders).
-- Scroll keys are ignored while you're typing in an input, textarea, or contenteditable — `Ctrl+U`'s native "delete to line start" in macOS text fields survives.
-- `gg`/`G` are plain-letter keys and only act outside text fields; `j`/`k` line scrolling is deliberately left to sites (Gmail, GitHub, YouTube use them) — see roadmap.
+Marks remember which pane they were set in: jumping to a mark restores that pane's scroll position *and* re-locks scroll focus onto it.
 
 ---
 
@@ -68,29 +73,39 @@ Home-row characters (`asdfghjkl`) come first by default, so the most common hint
 ## Architecture
 
 ```
-manifest.json     - Extension config, command declarations
+manifest.json     - Extension config, command declarations, permissions
 background.js     - Service worker; relays commands → content script,
-                    injects on demand into tabs that predate the install
-content.js        - Hint + scroll logic: element discovery, code gen,
-                    key handling, scroll-focus state
-hints.css         - Badge, status bar, and scroll-focus outline styles
-popup.html        - Popup showing keybinds
+                    injects on demand, answers tab-list queries
+content.js        - Modal state machine: leader, hints (follow/yank/
+                    focus/scroll), region stepping, marks, tab switcher,
+                    always-on scroll keys
+hints.css         - Badges, status/menu bar, toast, region highlight,
+                    tab switcher overlay
+popup.html        - Popup cheatsheet
 ```
 
 ---
 
 ## Known limitations
 
-- **The URL bar is a hard wall.** When the omnibox has focus, macOS turns `⌥F` into `ƒ` before Chrome's shortcut dispatch sees it, and even a command that fires can't pull keyboard focus back to the page — Chrome walls browser UI off from extensions on purpose (same reason Vimium goes inert there). Click or tab back into the page first.
-- Content scripts can't run on `chrome://` pages or the Web Store — Chrome restriction.
-- Pages that swallow all keyboard events at the document level may interfere.
+- **The URL bar is a hard wall.** When the omnibox has focus, macOS turns `⌥`-chords into characters before Chrome's shortcut dispatch sees them, and even a command that fires can't pull keyboard focus back to the page — Chrome walls browser UI off from extensions on purpose (same reason Vimium goes inert there). Click or tab back into the page first.
+- Content scripts can't run on `chrome://` pages or the Web Store — Chrome restriction. The tab switcher works *from* any normal page but can't be opened while such a page is focused.
+- Marks are per-tab and in-memory; they reset on navigation/reload.
+- Region stepping relies on semantic markup (`article`, `li`, `tr`, ARIA roles); div-soup pages may yield no items.
 - Hint badges use `fixed` positions; scrolling while hints are up causes drift (re-activate).
 
 ## Roadmap
 
+- [x] Leader-key model (`⌥Space`)
+- [x] Copy/yank mode
+- [x] Focus-only hints
+- [x] Scroll-position marks
+- [x] Region stepping (v1, semantic items)
+- [x] Hint-based tab switcher
 - [ ] Optional `j`/`k` line scrolling (config flag, off by default to avoid shadowing site shortcuts)
-- [ ] Hint-based tab switcher (badges over a tab list, type to jump)
-- [ ] `?` help overlay showing all active keybinds
+- [ ] `?` help overlay from idle (leader menu already lists verbs)
 - [ ] Options page for custom keymaps instead of editing `content.js`
 - [ ] Per-site disable list
-- [ ] Vim-style marks (`m` + letter to save a scroll position, `'` + letter to return)
+- [ ] Tab switcher extras: close (`x`), reopen, move
+- [ ] Region stepping v2: repeated-structure detection for non-semantic pages
+- [ ] Persistent marks (survive reload via `chrome.storage`)
