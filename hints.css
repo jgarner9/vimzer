@@ -1,13 +1,6 @@
-/* HintMode - hint badge styles */
+/* Vimzer - hint badge, status bar, and scroll-focus styles */
 
-.hintmode-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2147483646;
-  pointer-events: none;
-}
-
-.hintmode-badge {
+.vimzer-badge {
   position: fixed;
   z-index: 2147483647;
   display: inline-flex;
@@ -39,22 +32,22 @@
 }
 
 /* First letter typed: highlight matched first char */
-.hintmode-badge .hint-char-matched {
+.vimzer-badge .hint-char-matched {
   color: #fff;
 }
 
-.hintmode-badge .hint-char-pending {
+.vimzer-badge .hint-char-pending {
   color: #daa520;
 }
 
 /* Dimmed badges (first letter typed, doesn't match) */
-.hintmode-badge.hintmode-dim {
+.vimzer-badge.vimzer-dim {
   opacity: 0.18;
   filter: grayscale(0.6);
 }
 
 /* Active/matched badge pulses */
-.hintmode-badge.hintmode-active {
+.vimzer-badge.vimzer-active {
   background: #daa520;
   color: #111;
   border-color: #f5c842;
@@ -63,8 +56,15 @@
     0 2px 12px rgba(218, 165, 32, 0.5);
 }
 
+/* Flash on the container that just became the scroll focus */
+.vimzer-scroll-target {
+  outline: 2px solid #daa520 !important;
+  outline-offset: -2px;
+  box-shadow: inset 0 0 14px rgba(218, 165, 32, 0.18) !important;
+}
+
 /* Status bar at top of page */
-.hintmode-statusbar {
+.vimzer-statusbar {
   position: fixed;
   top: 0;
   left: 50%;
@@ -85,23 +85,23 @@
   pointer-events: none;
 }
 
-.hintmode-statusbar .status-mode {
+.vimzer-statusbar .status-mode {
   color: #daa520;
   font-weight: 700;
   letter-spacing: 1px;
 }
 
-.hintmode-statusbar .status-typed {
+.vimzer-statusbar .status-typed {
   color: #fff;
   font-weight: 600;
   min-width: 14px;
 }
 
-.hintmode-statusbar .status-count {
+.vimzer-statusbar .status-count {
   color: #555;
 }
 
-.hintmode-statusbar .status-newtab {
+.vimzer-statusbar .status-newtab {
   color: #4a9eff;
   font-size: 10px;
 }

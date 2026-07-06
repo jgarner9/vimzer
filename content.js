@@ -1,6 +1,6 @@
 /**
- * HintMode - content script
- * Helix-style two-letter keyboard navigation for Chrome
+ * Vimzer - content script
+ * Vim-style keyboard navigation for Chrome: hint jumps + scroll focus
  */
 
 (function () {
@@ -8,8 +8,8 @@
 
   // The background worker injects this script on demand into tabs that predate
   // the extension install; don't register everything twice.
-  if (window.__hintModeLoaded) return;
-  window.__hintModeLoaded = true;
+  if (window.__vimzerLoaded) return;
+  window.__vimzerLoaded = true;
 
   // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -30,13 +30,23 @@
     "summary",
   ].join(", ");
 
+  // Double-tap window for the `gg` chord
+  const GG_WINDOW_MS = 500;
+
+  // How long the scroll-target outline flash stays visible
+  const SCROLL_FLASH_MS = 1200;
+
   // ─── State ───────────────────────────────────────────────────────────────────
 
   let active = false;
+  let hintKind = "links"; // "links" | "scroll"
   let newTabMode = false;
   let typed = "";
   let hints = []; // [{ code, element, badge }]
   let statusBar = null;
+
+  let scrollTarget = null; // null = the page itself
+  let lastGPress = 0;
 
   // ─── Entry point ─────────────────────────────────────────────────────────────
 
@@ -45,27 +55,26 @@
       if (active) {
         deactivate();
       } else {
-        activate(msg.newTab);
+        activate({ kind: "links", newTab: msg.newTab });
       }
     }
   });
 
-  // In-page fallback keybind: Chrome refuses to bind Alt+F as an extension
-  // command (it collides with the browser menu shortcut), so handle it here.
+  // In-page keybinds. Chrome refuses to bind Alt+F as an extension command on
+  // Windows/Linux (browser menu conflict), and the scroll keys are page-local
+  // by design, so everything is handled here in a capture-phase listener.
   document.addEventListener("keydown", handleKeyDown, true);
 
   // ─── Activation ──────────────────────────────────────────────────────────────
 
-  function activate(openInNewTab = false) {
-    active = true;
-    newTabMode = openInNewTab;
-    typed = "";
+  function activate({ kind, newTab = false }) {
+    const elements = kind === "scroll" ? getScrollableAreas() : getVisibleFocusable();
+    if (elements.length === 0) return;
 
-    const elements = getVisibleFocusable();
-    if (elements.length === 0) {
-      deactivate();
-      return;
-    }
+    active = true;
+    hintKind = kind;
+    newTabMode = newTab;
+    typed = "";
 
     const codes = generateCodes(elements.length);
 
@@ -76,7 +85,7 @@
       return { code: codes[i], element: el, badge };
     });
 
-    statusBar = createStatusBar(elements.length);
+    statusBar = createStatusBar(kind === "scroll" ? "SCROLL" : "HINT", elements.length);
     document.body.appendChild(statusBar);
   }
 
@@ -102,13 +111,31 @@
       if (active) {
         deactivate();
       } else {
-        activate(e.shiftKey);
+        activate({ kind: "links", newTab: e.shiftKey });
       }
       return;
     }
 
-    if (!active) return;
+    // Alt+S toggles the scroll-focus picker
+    if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && e.code === "KeyS") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (active) {
+        deactivate();
+      } else {
+        activate({ kind: "scroll" });
+      }
+      return;
+    }
 
+    if (active) {
+      handleHintKey(e);
+    } else {
+      handleScrollKey(e);
+    }
+  }
+
+  function handleHintKey(e) {
     if (e.key === "Escape") {
       e.preventDefault();
       e.stopPropagation();
@@ -125,8 +152,11 @@
       return;
     }
 
+    // Leave shortcuts like Ctrl+C alone while hints are up
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
     const char = e.key.toLowerCase();
-    if (!HINT_CHARS.includes(char)) return;
+    if (char.length !== 1 || !HINT_CHARS.includes(char)) return;
 
     e.preventDefault();
     e.stopPropagation();
@@ -135,14 +165,56 @@
     updateHints();
   }
 
+  function handleScrollKey(e) {
+    if (isEditable(e.target) || isEditable(document.activeElement)) return;
+
+    // Ctrl+D / Ctrl+U: half page down / up
+    if (e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey) {
+      if (e.code === "KeyD" || e.code === "KeyU") {
+        e.preventDefault();
+        e.stopPropagation();
+        halfPage(e.code === "KeyD" ? 1 : -1);
+      }
+      return;
+    }
+
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+    // G: jump to bottom; gg: jump to top
+    if (e.code === "KeyG") {
+      if (e.shiftKey) {
+        e.preventDefault();
+        e.stopPropagation();
+        lastGPress = 0;
+        scrollToEdge(1);
+      } else {
+        const now = Date.now();
+        if (now - lastGPress < GG_WINDOW_MS) {
+          e.preventDefault();
+          e.stopPropagation();
+          lastGPress = 0;
+          scrollToEdge(-1);
+        } else {
+          lastGPress = now;
+        }
+      }
+    }
+  }
+
   function updateHints() {
     updateStatusBar();
 
     // Check for exact match
     const match = hints.find((h) => h.code === typed);
     if (match) {
-      activateElement(match.element);
+      const { element } = match;
+      const kind = hintKind;
       deactivate();
+      if (kind === "scroll") {
+        selectScrollTarget(element);
+      } else {
+        activateElement(element);
+      }
       return;
     }
 
@@ -150,7 +222,7 @@
     let anyVisible = false;
     hints.forEach(({ code, badge }) => {
       const matches = code.startsWith(typed);
-      badge.classList.toggle("hintmode-dim", !matches);
+      badge.classList.toggle("vimzer-dim", !matches);
 
       if (matches) {
         anyVisible = true;
@@ -163,7 +235,7 @@
     if (!anyVisible) {
       typed = "";
       hints.forEach(({ code, badge }) => {
-        badge.classList.remove("hintmode-dim");
+        badge.classList.remove("vimzer-dim");
         renderBadgeText(badge, code, 0);
       });
       updateStatusBar();
@@ -196,33 +268,100 @@
         el.focus();
       }
     } catch (err) {
-      console.warn("[HintMode] Could not activate element:", err);
+      console.warn("[Vimzer] Could not activate element:", err);
     }
+  }
+
+  // ─── Scroll focus ────────────────────────────────────────────────────────────
+
+  function rootScroller() {
+    return document.scrollingElement || document.documentElement;
+  }
+
+  function selectScrollTarget(el) {
+    const isRoot = el === rootScroller() || el === document.documentElement || el === document.body;
+    scrollTarget = isRoot ? null : el;
+
+    const flashEl = isRoot ? document.documentElement : el;
+    flashEl.classList.add("vimzer-scroll-target");
+    setTimeout(() => flashEl.classList.remove("vimzer-scroll-target"), SCROLL_FLASH_MS);
+  }
+
+  // Returns the locked container, or null meaning "scroll the page".
+  // Drops the lock if the container left the DOM or stopped being scrollable.
+  function getScroller() {
+    if (
+      scrollTarget &&
+      scrollTarget.isConnected &&
+      scrollTarget.scrollHeight > scrollTarget.clientHeight
+    ) {
+      return scrollTarget;
+    }
+    scrollTarget = null;
+    return null;
+  }
+
+  function halfPage(dir) {
+    const t = getScroller();
+    if (t) {
+      t.scrollBy({ top: (dir * t.clientHeight) / 2, behavior: "smooth" });
+    } else {
+      window.scrollBy({ top: (dir * window.innerHeight) / 2, behavior: "smooth" });
+    }
+  }
+
+  function scrollToEdge(dir) {
+    const t = getScroller() || rootScroller();
+    t.scrollTo({ top: dir > 0 ? t.scrollHeight : 0, behavior: "smooth" });
+  }
+
+  function getScrollableAreas() {
+    const root = rootScroller();
+    const areas = [root];
+
+    for (const el of document.body.getElementsByTagName("*")) {
+      if (el === root || el === document.body) continue;
+      if (el.clientHeight < 60) continue;
+      if (el.scrollHeight <= el.clientHeight + 10) continue;
+
+      const overflowY = window.getComputedStyle(el).overflowY;
+      if (overflowY !== "auto" && overflowY !== "scroll" && overflowY !== "overlay") continue;
+
+      if (!isVisible(el)) continue;
+      if (!overlapsViewport(el.getBoundingClientRect())) continue;
+
+      areas.push(el);
+    }
+
+    return areas;
+  }
+
+  function isEditable(el) {
+    if (!el || el === document.body) return false;
+    const tag = el.tagName?.toLowerCase();
+    return tag === "input" || tag === "textarea" || tag === "select" || el.isContentEditable;
   }
 
   // ─── Element discovery ────────────────────────────────────────────────────────
 
   function getVisibleFocusable() {
     const all = document.querySelectorAll(FOCUSABLE_SELECTORS);
-    const viewport = {
-      top: 0,
-      left: 0,
-      bottom: window.innerHeight,
-      right: window.innerWidth,
-    };
 
     return Array.from(all).filter((el) => {
       if (!isVisible(el)) return false;
       const rect = el.getBoundingClientRect();
       if (rect.width < 2 || rect.height < 2) return false;
-      // Must overlap the viewport
-      return (
-        rect.bottom > viewport.top &&
-        rect.top < viewport.bottom &&
-        rect.right > viewport.left &&
-        rect.left < viewport.right
-      );
+      return overlapsViewport(rect);
     });
+  }
+
+  function overlapsViewport(rect) {
+    return (
+      rect.bottom > 0 &&
+      rect.top < window.innerHeight &&
+      rect.right > 0 &&
+      rect.left < window.innerWidth
+    );
   }
 
   function isVisible(el) {
@@ -239,12 +378,9 @@
     const chars = HINT_CHARS.split("");
     const codes = [];
 
-    // Single-char hints first (up to chars.length)
-    // Then two-char combos, home-row first
+    // Two-char combos, home-row first. Always two chars for consistency.
     for (const a of chars) {
       if (codes.length >= count) break;
-      // Reserve single chars only if we don't need two-char codes for overflow
-      // Always use two chars for consistency (cleaner UX)
       for (const b of chars) {
         if (codes.length >= count) break;
         codes.push(a + b);
@@ -258,7 +394,7 @@
 
   function createBadge(code, rect) {
     const badge = document.createElement("div");
-    badge.className = "hintmode-badge";
+    badge.className = "vimzer-badge";
 
     renderBadgeText(badge, code, 0);
 
@@ -279,13 +415,13 @@
     }
   }
 
-  function createStatusBar(count) {
+  function createStatusBar(mode, count) {
     const bar = document.createElement("div");
-    bar.className = "hintmode-statusbar";
+    bar.className = "vimzer-statusbar";
     bar.innerHTML = `
-      <span class="status-mode">HINT</span>
-      <span class="status-typed" id="hintmode-typed">_</span>
-      <span class="status-count" id="hintmode-count">${count} targets</span>
+      <span class="status-mode">${mode}</span>
+      <span class="status-typed" id="vimzer-typed">_</span>
+      <span class="status-count" id="vimzer-count">${count} targets</span>
       ${newTabMode ? '<span class="status-newtab">⌥ new tab</span>' : ""}
     `;
     return bar;
@@ -293,8 +429,8 @@
 
   function updateStatusBar() {
     if (!statusBar) return;
-    const typedEl = statusBar.querySelector("#hintmode-typed");
-    const countEl = statusBar.querySelector("#hintmode-count");
+    const typedEl = statusBar.querySelector("#vimzer-typed");
+    const countEl = statusBar.querySelector("#vimzer-count");
     if (typedEl) typedEl.textContent = typed || "_";
     if (countEl) {
       const visible = hints.filter((h) => h.code.startsWith(typed)).length;

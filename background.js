@@ -11,7 +11,7 @@ async function sendActivate(tabId, newTab) {
       await chrome.tabs.sendMessage(tabId, msg);
     } catch (err) {
       // Injection is impossible on chrome://, Web Store, and similar pages.
-      console.warn("[HintMode] Could not activate hints in tab", tabId, err);
+      console.warn("[Vimzer] Could not activate hints in tab", tabId, err);
     }
   }
 }
