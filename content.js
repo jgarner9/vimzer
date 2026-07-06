@@ -6,6 +6,11 @@
 (function () {
   "use strict";
 
+  // The background worker injects this script on demand into tabs that predate
+  // the extension install; don't register everything twice.
+  if (window.__hintModeLoaded) return;
+  window.__hintModeLoaded = true;
+
   // ─── Config ──────────────────────────────────────────────────────────────────
 
   // Home-row biased hint alphabet. Pairs are generated in order, so frequent
@@ -45,7 +50,8 @@
     }
   });
 
-  // Also allow re-triggering the keybind inside the page context
+  // In-page fallback keybind: Chrome refuses to bind Alt+F as an extension
+  // command (it collides with the browser menu shortcut), so handle it here.
   document.addEventListener("keydown", handleKeyDown, true);
 
   // ─── Activation ──────────────────────────────────────────────────────────────
@@ -88,6 +94,19 @@
   // ─── Key handling ────────────────────────────────────────────────────────────
 
   function handleKeyDown(e) {
+    // Alt+F toggles hint mode; Alt+Shift+F toggles new-tab mode. Match on
+    // e.code so this works even where Alt+F produces a character (ƒ on macOS).
+    if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === "KeyF") {
+      e.preventDefault();
+      e.stopPropagation();
+      if (active) {
+        deactivate();
+      } else {
+        activate(e.shiftKey);
+      }
+      return;
+    }
+
     if (!active) return;
 
     if (e.key === "Escape") {
@@ -244,8 +263,6 @@
     renderBadgeText(badge, code, 0);
 
     // Position at top-left corner of element
-    const top = rect.top + window.scrollY;
-    const left = rect.left + window.scrollX;
     badge.style.top = `${Math.max(0, rect.top)}px`;
     badge.style.left = `${Math.max(0, rect.left)}px`;
 

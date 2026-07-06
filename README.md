@@ -19,13 +19,15 @@ Inspired by Helix's `<leader>gw` word jump and Vimium's `f` hint mode.
 
 | Action | Keybind |
 |---|---|
-| Activate hint mode | `Alt + F` |
+| Activate hint mode | `Alt + J` (or `Alt + F` while the page has focus) |
 | Activate hints (open in new tab) | `Alt + Shift + F` |
 | Cancel hint mode | `Esc` |
 | Undo last typed char | `Backspace` |
 
+> **Why two activation keys?** Chrome refuses to register `Alt+F` as an extension command shortcut (it conflicts with the built-in browser menu shortcut), so `Alt+J` is the global command. `Alt+F` / `Alt+Shift+F` are also handled directly by the content script as a fallback, so they work whenever the page itself has focus.
+
 **Hint mode flow:**
-1. Press `Alt+F` → amber hint badges appear on every focusable element
+1. Press `Alt+J` (or `Alt+F`) → amber hint badges appear on every focusable element
 2. Type the first letter → non-matching hints dim out
 3. Type the second letter → element is focused/clicked
 
@@ -39,7 +41,7 @@ Inspired by Helix's `<leader>gw` word jump and Vimium's `f` hint mode.
 
 ## Customizing Keybinds
 
-Chrome doesn't allow extensions to use `Cmd+` shortcuts reliably, but you can change the keybinds at:
+Chrome doesn't allow extensions to use `Cmd+` shortcuts reliably (and silently rejects suggested keys that collide with built-in browser shortcuts, like `Alt+F`), but you can change the command keybinds at:
 
 ```
 chrome://extensions/shortcuts

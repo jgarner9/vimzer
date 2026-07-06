@@ -3,7 +3,7 @@
   "name": "HintMode",
   "version": "1.0.0",
   "description": "Helix-style keyboard navigation with two-letter hint codes for any focusable element.",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage", "scripting"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -19,8 +19,8 @@
   "commands": {
     "activate-hints": {
       "suggested_key": {
-        "mac": "Alt+F",
-        "default": "Alt+F"
+        "mac": "Alt+J",
+        "default": "Alt+J"
       },
       "description": "Activate hint mode"
     },
