@@ -19,7 +19,7 @@
   "commands": {
     "activate-hints": {
       "suggested_key": {
-        "mac": "Alt+J",
+        "mac": "Alt+F",
         "default": "Alt+J"
       },
       "description": "Activate hint mode"
