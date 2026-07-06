@@ -19,15 +19,17 @@ Inspired by Helix's `<leader>gw` word jump and Vimium's `f` hint mode.
 
 | Action | Keybind |
 |---|---|
-| Activate hint mode | `Alt + J` (or `Alt + F` while the page has focus) |
+| Activate hint mode | macOS: `⌥F` · Windows/Linux: `Alt + J` (`Alt + F` also works on any platform while the page has focus) |
 | Activate hints (open in new tab) | `Alt + Shift + F` |
 | Cancel hint mode | `Esc` |
 | Undo last typed char | `Backspace` |
 
-> **Why two activation keys?** Chrome refuses to register `Alt+F` as an extension command shortcut (it conflicts with the built-in browser menu shortcut), so `Alt+J` is the global command. `Alt+F` / `Alt+Shift+F` are also handled directly by the content script as a fallback, so they work whenever the page itself has focus.
+> **Why the platform difference?** On Windows/Linux, Chrome reserves `Alt+F` for the browser menu and silently refuses to register it as an extension command, so `Alt+J` is the global command there. On macOS there's no such conflict, so `⌥F` is the global command. Global commands fire even when the URL bar has focus. `Alt+F` / `Alt+Shift+F` are additionally handled by the content script as a fallback on every platform, so they work whenever the page itself has focus.
+>
+> **Already installed?** Chrome only applies suggested keys on a fresh install. If your install is bound to an older key, either rebind at `chrome://extensions/shortcuts` or remove and re-load the unpacked extension.
 
 **Hint mode flow:**
-1. Press `Alt+J` (or `Alt+F`) → amber hint badges appear on every focusable element
+1. Press `⌥F` (macOS) or `Alt+J` (Windows/Linux) → amber hint badges appear on every focusable element
 2. Type the first letter → non-matching hints dim out
 3. Type the second letter → element is focused/clicked
 
